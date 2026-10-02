@@ -44,6 +44,16 @@ tar xzf "/tmp/${STARSHIP_TARBALL}" -C /tmp
 install -m755 /tmp/starship /usr/bin/starship
 rm -f "/tmp/${STARSHIP_TARBALL}" "/tmp/${STARSHIP_TARBALL}.sha256" /tmp/starship
 
+### Branding
+
+# ostree writes bootloader entry titles from PRETTY_NAME in
+# /usr/lib/os-release, which we inherit from the Bazzite base. Rewrite the
+# name fields so deployments of this image are labelled FrankenBlue.
+# ID and VARIANT_ID are left as-is so UBlue update/variant tooling keeps
+# working on this derived image.
+sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="FrankenBlue"/' /usr/lib/os-release
+sed -i 's/^NAME=.*/NAME="FrankenBlue"/' /usr/lib/os-release
+
 # Use a COPR Example:
 #
 # dnf5 -y copr enable ublue-os/staging
