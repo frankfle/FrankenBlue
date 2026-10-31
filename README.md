@@ -2,8 +2,9 @@
 
 An experimental customization of Bazzite (Nvidia open drivers)
 
-To use, from Bazzite, with nvidia open drivers, and I've only ever tested on KDE, type:
-`sudo bootc switch ghcr.io/frankfle/frankenblue:latest`
+To use, from Bazzite, with nvidia open drivers, and I've only ever tested on KDE.
+Set up signature verification once (below), then type:
+`sudo bootc switch --enforce-container-sigpolicy ghcr.io/frankfle/frankenblue:latest`
 
 # Community
 
@@ -14,7 +15,54 @@ If you have questions about this template after following the instructions, try 
 
 # How to Use
 
-`sudo bootc switch ghcr.io/frankfle/frankenblue:latest`
+The image is signed with [cosign](https://docs.sigstore.dev/cosign/) in CI, and the
+public key is in [`cosign.pub`](./cosign.pub). The `--enforce-container-sigpolicy`
+flag makes `bootc` require a valid signature from that key; without it the switch
+succeeds without checking anything.
+
+The check uses the policy on the machine you're switching from, so do this one time
+on that machine first:
+
+```bash
+sudo mkdir -p /etc/pki/containers
+sudo curl -fsSL -o /etc/pki/containers/frankenblue.pub \
+  https://raw.githubusercontent.com/frankfle/FrankenBlue/main/cosign.pub
+
+sudo tee /etc/containers/policy.json >/dev/null <<'EOF'
+{
+  "default": [
+    { "type": "reject" }
+  ],
+  "transports": {
+    "docker": {
+      "ghcr.io/frankfle/frankenblue": [
+        {
+          "type": "sigstoreSigned",
+          "keyPath": "/etc/pki/containers/frankenblue.pub",
+          "signedIdentity": { "type": "matchRepository" }
+        }
+      ]
+    },
+    "containers-storage": { "": [ { "type": "insecureAcceptAnything" } ] },
+    "dir": { "": [ { "type": "insecureAcceptAnything" } ] },
+    "oci": { "": [ { "type": "insecureAcceptAnything" } ] },
+    "oci-archive": { "": [ { "type": "insecureAcceptAnything" } ] }
+  }
+}
+EOF
+```
+
+Then switch, and reboot:
+
+```bash
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/frankfle/frankenblue:latest
+sudo systemctl reboot
+```
+
+Because the policy lives in `/etc`, it carries over to the new system, and every
+later `sudo bootc upgrade` will refuse an update that isn't signed by `cosign.pub`.
+The `reject` default also means other registry pulls (e.g. `podman pull`) are refused
+on this machine; loosen it if you need to pull other images.
 
 # Repository Contents
 
