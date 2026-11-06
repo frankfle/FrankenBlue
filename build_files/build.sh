@@ -21,8 +21,8 @@ dnf5 install -y \
     zoxide \
     fzf \
     atuin \
-    procs \
-    du-dust
+    du-dust \
+    unzip
 
 # starship is not packaged in Fedora or RPM Fusion, so install a pinned
 # release binary. The .sha256 sidecar from the release is verified first.
@@ -43,6 +43,24 @@ STARSHIP_SHA256="$(tr -d ' \t\r\n' < "/tmp/${STARSHIP_TARBALL}.sha256")"
 tar xzf "/tmp/${STARSHIP_TARBALL}" -C /tmp
 install -m755 /tmp/starship /usr/bin/starship
 rm -f "/tmp/${STARSHIP_TARBALL}" "/tmp/${STARSHIP_TARBALL}.sha256" /tmp/starship
+
+# procs was orphaned and dropped from the Fedora repos (rust-procs on
+# src.fedoraproject.org), so install a pinned release binary like starship.
+# The release publishes no .sha256 sidecar, so the release hashes are pinned here.
+PROCS_VERSION="0.14.12"
+case "$(uname -m)" in
+    x86_64)  PROCS_ARCH="x86_64"  PROCS_SHA256="81964faf9d5cd0e9f399d5d0954fb6fe4d4d9f7d3cbec4507633df5a45b11713" ;;
+    aarch64) PROCS_ARCH="aarch64" PROCS_SHA256="74b4f82acc6fe553cbd5af20ba0baac420b42bef9bb0cbb38fef14b8317d9f91" ;;
+    *) echo "Unsupported arch for procs: $(uname -m)" >&2; exit 1 ;;
+esac
+PROCS_ZIP="procs-v${PROCS_VERSION}-${PROCS_ARCH}-linux.zip"
+PROCS_URL="https://github.com/dalance/procs/releases/download/v${PROCS_VERSION}"
+curl -fsSL -o "/tmp/${PROCS_ZIP}" "${PROCS_URL}/${PROCS_ZIP}"
+echo "${PROCS_SHA256}  ${PROCS_ZIP}" | ( cd /tmp && sha256sum -c - )
+# the zip contains a single "procs" static-pie binary at its root
+unzip -oq "/tmp/${PROCS_ZIP}" -d /tmp
+install -m755 /tmp/procs /usr/bin/procs
+rm -f "/tmp/${PROCS_ZIP}" /tmp/procs
 
 ### Branding
 
